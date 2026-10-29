@@ -1,0 +1,82 @@
+name: CI
+
+# Every change to the shared code is built and tested inside every trainer before it reaches them:
+# each trainer repo is checked out and its Shared/ submodule replaced by this commit. Only when all
+# trainers pass on master are they told to pull it (see notify), so a breaking change shows up
+# here, at the source, instead of later in one of the trainers.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    # Same toolchain as the trainers' release workflows (VS2022 MSBuild, see the comments there).
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: A2G-Trainer
+            repo: transfairs/A2G-Trainer
+            tests: A2G-Trainer-XP.Tests/A2G-Trainer-XP.Tests.csproj
+          - name: A3-Trainer
+            repo: transfairs/A3-Trainer
+            tests: A3-Trainer.Tests/A3-Trainer.Tests.csproj
+
+    steps:
+      - name: Checkout trainer
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repo }}
+          path: trainer
+
+      - name: Checkout this Shared commit into the trainer
+        uses: actions/checkout@v4
+        with:
+          path: trainer/Shared
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: "[17.0,18.0)"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build tests
+        working-directory: trainer
+        run: msbuild ${{ matrix.tests }} /t:Restore,Build /p:Configuration=Release
+
+      - name: Run tests
+        working-directory: trainer
+        run: dotnet test ${{ matrix.tests }} --configuration Release --no-build --no-restore
+
+  notify:
+    # Tell the trainers to pull this commit right away. Their update workflow (shared-update.yml)
+    # also runs daily on its own, so without the token the update just arrives a little later.
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger the trainers' Shared update
+        env:
+          # Fine-grained token with "Contents: read and write" on the trainer repos (the default
+          # GITHUB_TOKEN can't reach other repositories).
+          GH_TOKEN: ${{ secrets.TRAINER_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::TRAINER_DISPATCH_TOKEN not set - the trainers pick this up with their daily update run."
+            exit 0
+          fi
+          for repo in transfairs/A2G-Trainer transfairs/A3-Trainer; do
+            gh api "repos/$repo/dispatches" -f event_type=shared-updated -f "client_payload[sha]=$GITHUB_SHA"
+            echo "Triggered $repo"
+          done
