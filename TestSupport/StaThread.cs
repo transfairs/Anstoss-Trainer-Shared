@@ -11,6 +11,7 @@ namespace AnstossTrainer.Shared.Tests
     /// </summary>
     internal static class StaThread
     {
+        /// <summary>Runs <paramref name="action"/> on a new STA thread, waits for it and rethrows its exception, if any.</summary>
         public static void Run(Action action)
         {
             ExceptionDispatchInfo captured = null;

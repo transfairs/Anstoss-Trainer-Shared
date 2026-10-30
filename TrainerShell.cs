@@ -13,6 +13,7 @@ namespace AnstossTrainer.Shared
     /// </summary>
     public class TrainerShell : Form
     {
+        /// <summary>True once the window is closing; the game observer stops then.</summary>
         internal bool ShutDown { get => this.shutDown; private set => this.shutDown = value; }
         private bool shutDown;
 

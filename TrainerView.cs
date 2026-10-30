@@ -12,14 +12,16 @@ namespace AnstossTrainer.Shared
     /// </summary>
     public class TrainerView : UserControl
     {
+        /// <summary>The game memory this view reads and writes.</summary>
         internal ProcessMemory Memory { get => this.memory; private set => this.memory = value; }
         private ProcessMemory memory;
 
-        // Parameterless for the WinForms designer only.
+        /// <summary>Parameterless, for the WinForms designer only.</summary>
         protected TrainerView()
         {
         }
 
+        /// <summary>A view on the given game memory.</summary>
         protected TrainerView(ProcessMemory memory)
         {
             this.memory = memory;
@@ -67,6 +69,7 @@ namespace AnstossTrainer.Shared
             return true;
         }
 
+        /// <summary>KeyPress handler that lets only digits and control keys through.</summary>
         protected void NumericOnly_KeyPress(object sender, KeyPressEventArgs e)
         {
             if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
@@ -74,6 +77,7 @@ namespace AnstossTrainer.Shared
                 e.Handled = true;
             }
         }
+        /// <summary>TextChanged handler that caps the text at 65535.</summary>
         protected void UshortMaxNumber_TextChanged(object sender, EventArgs e)
         {
             var textBox = (TextBox)sender;
@@ -83,6 +87,7 @@ namespace AnstossTrainer.Shared
                 textBox.SelectionStart = textBox.Text.Length;
             }
         }
+        /// <summary>TextChanged handler that caps the text at 2147483647.</summary>
         protected void IntMaxNumber_TextChanged(object sender, EventArgs e)
         {
             var textBox = (TextBox)sender;
@@ -92,6 +97,7 @@ namespace AnstossTrainer.Shared
                 textBox.SelectionStart = textBox.Text.Length;
             }
         }
+        /// <summary>TextChanged handler that caps the text at 255.</summary>
         protected void ByteMax255_TextChanged(object sender, EventArgs e)
         {
             var textBox = (TextBox)sender;
@@ -101,6 +107,7 @@ namespace AnstossTrainer.Shared
                 textBox.SelectionStart = textBox.Text.Length;
             }
         }
+        /// <summary>Opens the clicked link's URL (its LinkData).</summary>
         protected void LinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             string url = e.Link.LinkData as string;
@@ -112,6 +119,7 @@ namespace AnstossTrainer.Shared
 
         // Extracted so tests can override the actual OS process launch (which would otherwise pop
         // open a real browser) while still exercising LinkLabel_LinkClicked's own logic for real.
+        /// <summary>Starts the given URL; tests override it so no browser opens.</summary>
         internal virtual void StartProcess(string url) => Process.Start(url);
     }
 }

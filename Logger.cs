@@ -3,6 +3,7 @@ using System.IO;
 
 namespace AnstossTrainer.Shared
 {
+    /// <summary>Severity of a log entry.</summary>
     internal enum LogLevel
     {
         Debug,
@@ -49,22 +50,28 @@ namespace AnstossTrainer.Shared
         // Debug/Info are gated behind the trainer's debug switch so the log stays empty by default
         // and never bloats for a user who hasn't opted into debugging; Warn/Error always write,
         // since they flag an actual problem and are what a bug report would need.
+        /// <summary>Writes a debug entry, if the trainer has debug logging on.</summary>
         internal static void Debug(string message)
         {
             if (IsDebugEnabled())
                 Write(LogLevel.Debug, message, null);
         }
 
+        /// <summary>Writes an info entry, if the trainer has debug logging on.</summary>
         internal static void Info(string message)
         {
             if (IsDebugEnabled())
                 Write(LogLevel.Info, message, null);
         }
 
+        /// <summary>Writes a warning.</summary>
         internal static void Warn(string message) => Write(LogLevel.Warn, message, null);
+        /// <summary>Writes a warning with the exception's details.</summary>
         internal static void Warn(string message, Exception ex) => Write(LogLevel.Warn, message, ex);
 
+        /// <summary>Writes an error.</summary>
         internal static void Error(string message) => Write(LogLevel.Error, message, null);
+        /// <summary>Writes an error with the exception's details.</summary>
         internal static void Error(string message, Exception ex) => Write(LogLevel.Error, message, ex);
 
         private static void Write(LogLevel level, string message, Exception ex)

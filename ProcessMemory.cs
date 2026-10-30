@@ -12,8 +12,11 @@ namespace AnstossTrainer.Shared
         public Process Process { get; internal set; }
         /// <summary>The attached process's main executable module.</summary>
         public ProcessModule MainModule { get; internal set; }
+        /// <summary>Handle used for reading and writing the process's memory.</summary>
         internal IntPtr Handle { get; set; }
+        /// <summary>Base address of the main module.</summary>
         internal IntPtr ModuleBaseAddress { get; set; }
+        /// <summary>Size in bytes of the main module's image.</summary>
         internal uint ModuleSize { get; set; }
     }
 

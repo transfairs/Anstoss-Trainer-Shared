@@ -58,6 +58,7 @@ namespace AnstossTrainer.Shared
             }
         }
 
+        /// <summary>Attaches to the first candidate <see cref="TryAttach"/> accepts, unless a live game is already attached.</summary>
         protected void FindGame()
         {
             // Already tracking a live game process - no need to rescan every process on the system.
@@ -79,6 +80,7 @@ namespace AnstossTrainer.Shared
 
         // Isolates one view's refresh/init from the others - a bad address in one view (e.g. an
         // unmapped field) must not stop the others from ever getting their data.
+        /// <summary>Runs one view's refresh; an exception in it is logged so the other views still update.</summary>
         protected void RefreshView(string viewName, Action action)
         {
             try
