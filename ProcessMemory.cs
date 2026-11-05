@@ -31,6 +31,9 @@ namespace AnstossTrainer.Shared
     public partial class ProcessMemory
     {
         private const uint ProcessAllAccess = 2035711u;
+
+        /// <summary>Whether the trainer runs on Mono (e.g. Wine Mono under Wine/Proton) rather than .NET Framework.</summary>
+        internal static readonly bool IsMono = Type.GetType("Mono.Runtime") != null;
         private const uint MinValidAddress = 0x10000;
 
         /// <summary>The currently attached game process and its module/handle info.</summary>
@@ -118,7 +121,9 @@ namespace AnstossTrainer.Shared
                 return false;
             }
 
-            if (!process.Responding)
+            // Mono (Wine Mono, when the trainer runs under Wine/Proton) always reports "not
+            // responding", even for a live game with a main window, so the check is .NET Framework only.
+            if (!IsMono && !process.Responding)
                 return false;
 
             IntPtr handle = OpenProcessNative(ProcessAllAccess, true, pid);
