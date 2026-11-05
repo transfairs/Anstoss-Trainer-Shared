@@ -23,6 +23,7 @@ namespace AnstossTrainer.Shared
 
         private readonly Control root;
         private readonly Size baseSize;
+        private readonly SizeF designScale;
         private readonly HashSet<Control> tracked = new HashSet<Control>();
         private readonly Dictionary<Control, Rectangle> baseBounds = new Dictionary<Control, Rectangle>();
         private readonly Dictionary<Control, Font> baseFonts = new Dictionary<Control, Font>();
@@ -35,18 +36,32 @@ namespace AnstossTrainer.Shared
         internal float ScaleX { get; private set; } = 1f;
         /// <summary>Vertical factor currently applied, relative to the design size.</summary>
         internal float ScaleY { get; private set; } = 1f;
-        /// <summary>Factor fonts are currently scaled by - the smaller of the two axes.</summary>
-        internal float FontScale => Math.Min(this.ScaleX, this.ScaleY);
+        /// <summary>
+        /// Factor fonts are currently scaled by - the smaller of the two axes, less the part the
+        /// fonts already carry from the screen's DPI (see the constructor's designScale).
+        /// </summary>
+        internal float FontScale => Math.Min(this.ScaleX / this.designScale.Width, this.ScaleY / this.designScale.Height);
 
         /// <summary>
         /// Takes the root's current layout as the design state. Call it once the root has been laid
         /// out at its unscaled size (i.e. after any DPI auto-scaling) and before anything in it has
         /// been scrolled, since everything is measured against what the controls look like right now.
         /// </summary>
-        internal ViewScaler(Control root)
+        internal ViewScaler(Control root) : this(root, new SizeF(1f, 1f))
+        {
+        }
+
+        /// <summary>
+        /// Like <see cref="ViewScaler(Control)"/>, for a root whose layout missed the DPI
+        /// auto-scaling: its bounds are still the designed pixels, while its point-sized fonts
+        /// already render <paramref name="designScale"/> times larger. Bounds keep stretching from
+        /// the design, fonts only grow beyond that factor.
+        /// </summary>
+        internal ViewScaler(Control root, SizeF designScale)
         {
             this.root = root;
             this.baseSize = root.Size;
+            this.designScale = designScale.Width > 0f && designScale.Height > 0f ? designScale : new SizeF(1f, 1f);
 
             // A ContainerControl in AutoScaleMode.Font rescales all of its children by itself as
             // soon as its font changes - which would compound with the scaling done here.
