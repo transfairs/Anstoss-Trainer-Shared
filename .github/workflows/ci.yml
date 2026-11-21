@@ -25,9 +25,11 @@ jobs:
           - name: A2G-Trainer
             repo: transfairs/A2G-Trainer
             tests: A2G-Trainer-XP.Tests/A2G-Trainer-XP.Tests.csproj
+            project: A2G-Trainer.csproj
           - name: A3-Trainer
             repo: transfairs/A3-Trainer
             tests: A3-Trainer.Tests/A3-Trainer.Tests.csproj
+            project: A3-Trainer/A3-Trainer.csproj
 
     steps:
       - name: Checkout trainer
@@ -58,6 +60,12 @@ jobs:
       - name: Run tests
         working-directory: trainer
         run: dotnet test ${{ matrix.tests }} --configuration Release --no-build --no-restore
+
+      # The Windows 2000 build compiles the same code against .NET Framework 2.0 (Compat/ fills in
+      # what 2.0 lacks), so shared code must not use further .NET 3.5/4.0 APIs.
+      - name: Build for Windows 2000
+        working-directory: trainer
+        run: msbuild ${{ matrix.project }} /restore /t:Build /p:Configuration=Release /p:Platform=x86 /p:Win2000=true
 
   notify:
     # Tell the trainers to pull this commit right away. Their update workflow (shared-update.yml)
