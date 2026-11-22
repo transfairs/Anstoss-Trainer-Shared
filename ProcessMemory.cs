@@ -57,20 +57,66 @@ namespace AnstossTrainer.Shared
         [DllImport("kernel32.dll")]
         private static extern bool FlushInstructionCache(IntPtr hProcess, UIntPtr lpBaseAddress, UIntPtr dwSize);
 
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr CreateFileMapping(IntPtr hFile, IntPtr lpAttributes, uint flProtect, uint dwMaximumSizeHigh, uint dwMaximumSizeLow, string lpName);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr MapViewOfFile(IntPtr hFileMappingObject, uint dwDesiredAccess, uint dwFileOffsetHigh, uint dwFileOffsetLow, UIntPtr dwNumberOfBytesToMap);
+
+        [DllImport("kernel32.dll")]
+        private static extern bool DuplicateHandle(IntPtr hSourceProcessHandle, IntPtr hSourceHandle, IntPtr hTargetProcessHandle, out IntPtr lpTargetHandle, uint dwDesiredAccess, bool bInheritHandle, uint dwOptions);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetCurrentProcess();
+
+        [DllImport("kernel32.dll")]
+        private static extern bool CloseHandle(IntPtr hObject);
+
         private const uint MemCommitReserve = 0x3000;
         private const uint PageExecuteReadWrite = 0x40;
+        private const uint PageReadWrite = 0x04;
+        private const uint FileMapAllAccess = 0xF001F;
+        private const uint DuplicateSameAccess = 0x2;
+
+        /// <summary>
+        /// Whether the trainer runs on Windows 95/98/Me. These lack VirtualAllocEx, so
+        /// <see cref="AllocateExecutable"/> uses memory from the shared arena there instead.
+        /// Settable for tests.
+        /// </summary>
+        internal static bool UseSharedArena = Environment.OSVersion.Platform == PlatformID.Win32Windows;
 
         /// <summary>
         /// Allocates <paramref name="size"/> bytes of executable, writable memory inside the attached
         /// process and returns its address, or null if that fails (or the address doesn't fit the
-        /// 32-bit game). Used only for the small code stub JobOfferInjector places there; the memory
-        /// lives as long as the game process and is never freed.
+        /// 32-bit game). Used for the code stubs the injectors place there; the memory lives as long
+        /// as the game process and is never freed.
         /// </summary>
         public uint? AllocateExecutable(int size)
         {
-            IntPtr address = VirtualAllocEx(this.mProc.Handle, IntPtr.Zero, (UIntPtr)size, MemCommitReserve, PageExecuteReadWrite);
+            IntPtr address = UseSharedArena
+                ? this.AllocateShared(size)
+                : VirtualAllocEx(this.mProc.Handle, IntPtr.Zero, (UIntPtr)size, MemCommitReserve, PageExecuteReadWrite);
             long value = address.ToInt64();
             return value == 0 || value > uint.MaxValue ? (uint?)null : (uint)value;
+        }
+
+        // Windows 9x maps every view of a page-file mapping into the shared arena (0x80000000 to
+        // 0xBFFFFFFF), at the same address in every process, and without NX a readable page is also
+        // executable. So a view mapped here is usable as code inside the game. A copy of the mapping
+        // handle in the game process keeps the memory alive after the trainer exits, like memory from
+        // VirtualAllocEx. The trainer's own handle and view stay open until it exits. Returns the
+        // view's address, or zero if any step fails.
+        private IntPtr AllocateShared(int size)
+        {
+            IntPtr mapping = CreateFileMapping(new IntPtr(-1), IntPtr.Zero, PageReadWrite, 0, (uint)size, null);
+            if (mapping == IntPtr.Zero)
+                return IntPtr.Zero;
+            if (!DuplicateHandle(GetCurrentProcess(), mapping, this.mProc.Handle, out _, 0, false, DuplicateSameAccess))
+            {
+                CloseHandle(mapping);
+                return IntPtr.Zero;
+            }
+            return MapViewOfFile(mapping, FileMapAllAccess, 0, 0, UIntPtr.Zero);
         }
 
         /// <summary>
@@ -103,7 +149,8 @@ namespace AnstossTrainer.Shared
         /// <summary>Attaches to the process with the given PID, caching its handle, main module, and base address. Safe to call repeatedly for the same PID.</summary>
         public bool OpenProcess(int pid)
         {
-            if (pid <= 0)
+            // Windows 9x hands out negative process IDs, so only 0 is ruled out up front.
+            if (pid == 0)
                 return false;
 
             // Already attached to this exact process - cheap no-op, matches the original library's

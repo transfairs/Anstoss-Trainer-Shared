@@ -12,7 +12,7 @@ Each trainer embeds this repository as the git submodule `Shared/`. Nothing here
 | Path | What | Used by |
 |---|---|---|
 | `AnstossTrainer.Shared.projitems` (+ `.shproj`) | Visual Studio *shared project*: process memory access (`ProcessMemory`), `Logger`, main-window base (`TrainerShell`), view base (`TrainerView`), game observer loop (`GameObserver`), `ViewScaler`. Compiled into each trainer's exe, so every trainer stays a single file. | `<Import Project="Shared\AnstossTrainer.Shared.projitems" />` in each trainer's csproj |
-| `Compat/` | Framework parts .NET 2.0 lacks (LINQ to Objects, `Func`/`Action`, `HashSet`/`ISet`, `Tuple`, `ConcurrentDictionary`, `ConditionalWeakTable`, `Enum.HasFlag`, `StringBuilder.Clear`, `WebUtility.HtmlDecode`), with the original signatures. Compiled only into each trainer's Windows 2000 build (`msbuild … /p:Win2000=true`), which targets .NET Framework 2.0. Static .NET 4.0 methods (`string.Join` with sequences, `string.IsNullOrWhiteSpace`) can't be supplied this way; shared and trainer code avoids them. | `<Compile Include="Shared\Compat\*.cs" />` in each trainer's csproj, only when `Win2000` is `true` |
+| `Compat/` | Framework parts .NET 2.0 lacks (LINQ to Objects, `Func`/`Action`, `HashSet`/`ISet`, `Tuple`, `ConcurrentDictionary`, `ConditionalWeakTable`, `Enum.HasFlag`, `StringBuilder.Clear`, `WebUtility.HtmlDecode`), with the original signatures. Compiled only into each trainer's Windows 2000 build (`msbuild … /p:Win2000=true`), which targets .NET Framework 2.0 and also runs on Windows 98 SE and ME (there only with .NET 2.0 without a service pack, so no methods from 2.0 SP1/SP2). Static .NET 4.0 methods (`string.Join` with sequences, `string.IsNullOrWhiteSpace`) can't be supplied this way; shared and trainer code avoids them. | `<Compile Include="Shared\Compat\*.cs" />` in each trainer's csproj, only when `Win2000` is `true` |
 | `app.manifest` | Application manifest (asInvoker, DPI aware) | each trainer's `<ApplicationManifest>` |
 | `TestSupport/StaThread.cs` | Runs WinForms test code on an STA thread | linked into each trainer's test project |
 | `help/style.css`, `help/script.js` | Look and behaviour of the online help pages. Each page names its repository in `<body data-repo="owner/repo">` for version, download and changelog. | copied next to each trainer's `help/` by its `pages.yml` |
@@ -27,10 +27,10 @@ Game-specific additions to shared classes stay in the trainers as `partial` part
    this repository; commit and push from there).
 2. **CI** ([`ci.yml`](.github/workflows/ci.yml)) builds and tests every trainer with the new commit,
    on every push and pull request. A change that breaks a trainer fails here.
-3. When master is green, CI notifies the trainers (`repository_dispatch`, needs the secret
+3. When main is green, CI notifies the trainers (`repository_dispatch`, needs the secret
    `TRAINER_DISPATCH_TOKEN`). Each trainer's `shared-update.yml` then moves its `Shared/` submodule to
    the new commit, runs its own tests and
-   - commits the update to master if they pass (and redeploys its online help),
+   - commits the update to its default branch if they pass (and redeploys its online help),
    - opens a pull request with the failing update if they don't.
 
    Without the token the same update runs daily on a schedule; it can also be started by hand

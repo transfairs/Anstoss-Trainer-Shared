@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -125,9 +126,9 @@ namespace AnstossTrainer.Shared
         /// </summary>
         protected void AddNavigationButtons(MenuStrip menu)
         {
-            this.backButton = new ToolStripMenuItem("◀") { Name = "backToolStripMenuItem", ToolTipText = "Zurück (Alt+Links)" };
+            this.backButton = new ArrowItem("◀", true) { Name = "backToolStripMenuItem", ToolTipText = "Zurück (Alt+Links)" };
             this.backButton.Click += (s, e) => this.GoBack();
-            this.forwardButton = new ToolStripMenuItem("▶") { Name = "forwardToolStripMenuItem", ToolTipText = "Vor (Alt+Rechts)" };
+            this.forwardButton = new ArrowItem("▶", false) { Name = "forwardToolStripMenuItem", ToolTipText = "Vor (Alt+Rechts)" };
             this.forwardButton.Click += (s, e) => this.GoForward();
             menu.Items.Insert(0, this.forwardButton);
             menu.Items.Insert(0, this.backButton);
@@ -201,6 +202,37 @@ namespace AnstossTrainer.Shared
                 return true;
             }
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        /// <summary>
+        /// A back or forward arrow in the menu, drawn as a triangle instead of written: Windows 2000
+        /// fonts lack U+25C0/U+25B6 (boxes), and Windows 9x draws menu text through the ANSI code page
+        /// (question marks). The text stays for the item's size and its accessible name.
+        /// </summary>
+        internal sealed class ArrowItem : ToolStripMenuItem
+        {
+            private readonly bool left;
+
+            internal ArrowItem(string text, bool left) : base(text)
+            {
+                this.left = left;
+            }
+
+            /// <summary>Draws the menu's item background, then the arrow in the text colour (grey when disabled).</summary>
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                this.Owner.Renderer.DrawMenuItemBackground(new ToolStripItemRenderEventArgs(e.Graphics, this));
+                Rectangle box = this.ContentRectangle;
+                float height = this.Font.Height * 0.55f, width = height * 0.87f;
+                float x = box.Left + box.Width / 2f, y = box.Top + box.Height / 2f;
+                float tip = this.left ? x - width / 2 : x + width / 2, back = this.left ? x + width / 2 : x - width / 2;
+                PointF[] triangle = { new PointF(tip, y), new PointF(back, y - height / 2), new PointF(back, y + height / 2) };
+                SmoothingMode smoothing = e.Graphics.SmoothingMode;
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (Brush brush = new SolidBrush(this.Enabled ? this.ForeColor : SystemColors.GrayText))
+                    e.Graphics.FillPolygon(brush, triangle);
+                e.Graphics.SmoothingMode = smoothing;
+            }
         }
         #endregion
 
